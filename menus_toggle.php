@@ -1,114 +1,98 @@
 <?php
+//
+// menu_toggle, its page in the control panel: ?cp=menus_toggle, in the menu of the Settings page
+//
 
 // not for directly open
-if (! defined('IN_ADMIN'))
-{
-    exit;
+if (!defined('IN_ADMIN')) {
+    exit();
 }
 
 //current template
 $stylee = 'admin_menus_toggle';
+$styleePath = __DIR__;
 
-// template variables
-$styleePath = dirname(__FILE__);
+// the tab: the main menu, the user menu or the menu of the control panel
+$menu_toggle_tab = g('smt', default: 'top');
 
-$H_FORM_KEYS_GET = kleeja_add_form_key_get('adm_menus_toggle');
+if (!isset(MENU_TOGGLE_MENUS[$menu_toggle_tab])) {
+    $menu_toggle_tab = 'top';
+}
 
-$action = basename(ADMIN_PATH) . '?cp=' . basename(__file__, '.php');
+$action = basename(ADMIN_PATH) . '?cp=menus_toggle';
+$menu_toggle_action = $action . '&amp;smt=' . $menu_toggle_tab;
+$H_FORM_KEYS = kleeja_add_form_key('adm_menus_toggle');
 
-$hidden_side_menu_items = explode(':', $config['menu_toggle_hidden_sidemenu_items']);
+// every administrator sees the menu of the control panel, only a founder changes it
+$menu_toggle_can_edit = $menu_toggle_tab !== 'admin' || (int) $userinfo['founder'] === 1;
 
-$is_founder_admin = intval($userinfo['founder']) === 1;
+$menu_toggle_items = menu_toggle_items($menu_toggle_tab);
+$menu_toggle_hidden = menu_toggle_hidden($menu_toggle_tab);
 
-$side_menu_items = [
-    ['name' => 'profile', 'title' => $lang['PROFILE'], 'hidden' => (int) in_array('profile', $hidden_side_menu_items)],
-    ['name' => 'fileuser', 'title' => $lang['YOUR_FILEUSER'], 'hidden' => (int) in_array('fileuser', $hidden_side_menu_items)],
-    ['name' => 'logout', 'title' => $lang['LOGOUT'], 'hidden' => (int) in_array('logout', $hidden_side_menu_items)],
-    ['name' => 'login', 'title' => $lang['LOGIN'], 'hidden' => (int) in_array('login', $hidden_side_menu_items)],
-    ['name' => 'register', 'title' => $lang['REGISTER'], 'hidden' => (int) in_array('register', $hidden_side_menu_items)],
-];
-
-$hidden_top_menu_items = explode(':', $config['menu_toggle_hidden_topmenu_items']);
-
-$top_menu_items = [
-    ['name' => 'index', 'title' => $lang['INDEX'], 'hidden' => (int) in_array('index', $hidden_top_menu_items)],
-    ['name' => 'rules', 'title' => $lang['RULES'], 'hidden' => (int) in_array('rules', $hidden_top_menu_items)],
-    ['name' => 'guide', 'title' => $lang['GUIDE'], 'hidden' => (int) in_array('guide', $hidden_top_menu_items)],
-    ['name' => 'stats', 'title' => $lang['STATS'], 'hidden' => (int) in_array('stats', $hidden_top_menu_items)],
-    ['name' => 'report', 'title' => $lang['REPORT'], 'hidden' => (int) in_array('report', $hidden_top_menu_items)],
-    ['name' => 'call', 'title' => $lang['CALL'], 'hidden' => (int) in_array('call', $hidden_top_menu_items)],
-];
-
-$hidden_admin_menu_items = explode(':', $config['menu_toggle_hidden_adminmenu_items']);
-
-$admin_menu_items = [];
-
-foreach ($adm_extensions as $item)
-{
-    $m = isset($item[1]) && $item[1] == '_' ? substr($item, 2) : $item;
-
-    if (in_array($m, ['start', 'lgoutcp', 'exts', 'configs']))
-    {
-        continue;
+//
+// save the switches of the tab
+//
+if (ip('submit')) {
+    if (!kleeja_check_form_key('adm_menus_toggle')) {
+        kleeja_admin_err($lang['INVALID_FORM_KEY'], $menu_toggle_action);
     }
 
-    $admin_menu_items[] = [
-        'name'   => $item,
-        'title'  => ! empty($lang['R_' . strtoupper($m)]) ? $lang['R_' . strtoupper($m)] : (! empty($olang['R_' . strtoupper($m)]) ? $olang['R_' . strtoupper($m)] : strtoupper($m)),
-        'hidden' => (int) in_array($item, $hidden_admin_menu_items)
+    if (!$menu_toggle_can_edit) {
+        kleeja_admin_err($lang['HV_NOT_PRVLG_ACCESS'], $menu_toggle_action);
+    }
+
+    // the items whose switch is on, only the names that the tab lists count
+    $menu_toggle_shown = isset($_POST['shown']) && is_array($_POST['shown']) ? $_POST['shown'] : [];
+
+    // a hidden item that the tab doesn't list stays hidden: the page of a plugin that is disabled for now
+    $menu_toggle_new = array_values(array_diff($menu_toggle_hidden, array_keys($menu_toggle_items)));
+
+    foreach (array_keys($menu_toggle_items) as $menu_toggle_name) {
+        if (!in_array($menu_toggle_name, $menu_toggle_shown, true)) {
+            $menu_toggle_new[] = $menu_toggle_name;
+        }
+    }
+
+    if ($menu_toggle_new !== $menu_toggle_hidden) {
+        // with OPcache, the next pages would read the old settings for a while: Kleeja doesn't tell OPcache
+        // that the file changed. OPcache finds a relative path only while the file exists, before update_config()
+        if (function_exists('opcache_invalidate') && file_exists(PATH . 'cache/data_config.php')) {
+            @opcache_invalidate(PATH . 'cache/data_config.php', true);
+        }
+
+        update_config(menu_toggle_config_name($menu_toggle_tab), implode(':', $menu_toggle_new));
+    }
+
+    kleeja_admin_info($lang['CONFIGS_UPDATED'], $menu_toggle_action);
+}
+
+//
+// the page
+//
+$menu_toggle_tabs = [];
+
+foreach (MENU_TOGGLE_MENUS as $menu_toggle_menu => $menu_toggle_word) {
+    $menu_toggle_tabs[] = [
+        'title' => $olang[$menu_toggle_word],
+        'link' => $action . '&amp;smt=' . $menu_toggle_menu,
+        'current' => $menu_toggle_menu === $menu_toggle_tab,
     ];
 }
 
-$go_menu = [
-    'menus_toggle' => ['name' => $olang['R_MENUS_TOGGLE'], 'link' => './?cp=menus_toggle', 'goto' => 'menus_toggle', 'current' => g('cp') == 'menus_toggle']
-];
+$menu_toggle_exp = $olang[MENU_TOGGLE_MENUS[$menu_toggle_tab] . '_EXP'];
+$menu_toggle_rows = [];
 
-if (ig('toggle'))
-{
-    if (! kleeja_check_form_key_get('adm_menus_toggle', 3600))
-    {
-        header('HTTP/1.1 405 Method Not Allowed');
-        $adminAjaxContent = $lang['INVALID_FORM_KEY'];
-    }
-    else
-    {
-        $name = g('name');
-        $menu = g('menu');
-        $hide = g('toggle', 'int') == 1;
-
-        if ($menu == 'admin' && ! $is_founder_admin)
-        {
-            header('HTTP/1.1 405 Method Not Allowed');
-            $adminAjaxContent = $lang['HV_NOT_PRVLG_ACCESS'];
-        }
-        else
-        {
-            toggleMenuItem($name, $menu, $hide);
-
-            $adminAjaxContent = $lang['CONFIGS_UPDATED'];
-        }
-    }
+foreach ($menu_toggle_items as $menu_toggle_name => $menu_toggle_item) {
+    $menu_toggle_rows[] = [
+        'name' => $menu_toggle_name,
+        'title' => $menu_toggle_item['title'],
+        'icon' => $menu_toggle_item['icon'],
+        // who sees the link: some links of the user menu are for members, the others for guests
+        'audience' =>
+            $menu_toggle_item['for'] !== '' ? $olang['MENU_TOGGLE_FOR_' . strtoupper($menu_toggle_item['for'])] : '',
+        'shown' => !in_array($menu_toggle_name, $menu_toggle_hidden, true),
+    ];
 }
 
-
-function toggleMenuItem($name, $menu, $hide)
-{
-    global $config;
-
-    $items = explode(':', $config['menu_toggle_hidden_' . $menu . 'menu_items']);
-    $new_items = $items = array_filter($items);
-
-    if (in_array($name, $items) && ! $hide)
-    {
-        $new_items = array_diff($items, [$name]);
-    }
-    elseif ($hide)
-    {
-        $new_items[] = $name;
-    }
-
-    if ($new_items != $items)
-    {
-        update_config('menu_toggle_hidden_' . $menu . 'menu_items', implode(':', $new_items));
-    }
-}
+// the page is one of the sections of the Settings page, its menu lists them
+$go_menu = menu_toggle_settings_menu();

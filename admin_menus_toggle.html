@@ -1,107 +1,68 @@
-<script>
-function toggleMenuItem(name, menu, hide, current) {
-		$.ajax({
-		url: '{action}&toggle=' + hide + '&_ajax_=1&menu=' + menu + '&name=' + name + '&{H_FORM_KEYS_GET}',
-        dataType: 'json',
-		cache: false})
-		.done(function (data) {
-			if(data.content){
-                $('#pageErrors>span').html(data.content);
-                $('#pageErrors').removeClass('d-none alert-danger').addClass('alert-info');
-
-			} else {
-				this.fail();
-			}
-		})
-		.fail(function(data) {
-            var tryAgainLang = '{lang.ERROR_TRY_AGAIN}';
-            <IGNORE>$('#pageErrors>span').html((data.content ? data.content : (data.responseJSON ? data.responseJSON.content  : tryAgainLang)));</IGNORE>
-            $('#pageErrors').removeClass('d-none alert-info').addClass('alert-danger');
-                var itemRemoveClass = current == 1 ? 'cb-disable' : 'cb-enable';
-                var itemAddClass = current == 0 ? 'cb-disable' : 'cb-enable';
-                $('#' + menu + '_menu_'+name + ' .' + itemRemoveClass).addClass('selected');
-                $('#' + menu + '_menu_'+name + ' .' + itemAddClass).removeClass('selected');
-        });
-
-        return false;
-}
-</script>
-
-<div class="alert alert-info alert-dismissible fixed-top m-3 p-0 text-center small  d-none" id="pageErrors">
-    <span>...</span>
-    <button type="button" class="close py-0" data-dismiss="alert" aria-label="Close">
-        <span aria-hidden="true" class="small" style="cursor:pointer">&times;</span>
-    </button>
+<div class="kj-page-header">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="./">{lang.R_CPINDEX}</a></li>
+                <li class="breadcrumb-item"><a href="./?cp=options">{lang.R_CONFIGS}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{olang.R_MENUS_TOGGLE}</li>
+            </ol>
+        </nav>
+        <h1 class="kj-page-title">{olang.R_MENUS_TOGGLE}</h1>
+        <p class="kj-page-subtitle">{olang.MENU_TOGGLE_INTRO}</p>
+    </div>
 </div>
 
-<!-- Breadcrumbs -->
-<ol class="breadcrumb">
-    <li class="breadcrumb-item"><a href="./">{lang.R_CPINDEX}</a></li>
-    <li class="breadcrumb-item"><a href="./?cp=options">{lang.R_CONFIGS}</a></li>
-    <li class="breadcrumb-item active">{olang.R_MENUS_TOGGLE}</li>
-</ol>
+<!-- a tab for each menu: the main menu and the user menu of the site, and the menu of the control panel -->
+<section class="card">
+    <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs">
+            <LOOP NAME="menu_toggle_tabs">
+            <li class="nav-item">
+                <a class="nav-link<IF LOOP="current"> active</IF>" href="{{link}}"<IF LOOP="current"> aria-current="page"</IF>>{{title}}</a>
+            </li>
+            </LOOP>
+        </ul>
+    </div>
 
-<div class="alert alert-light">{olang.MENU_TOGGLE_EXP}</div>
+    <IF NAME="menu_toggle_can_edit">
+    <!-- a switch for each link, on is shown -->
+    <form method="post" action="{menu_toggle_action}">
+        <div class="card-body">
+            <p class="mb-1">{menu_toggle_exp}</p>
+            <p class="small text-body-secondary mb-0">{olang.MENU_TOGGLE_HINT}</p>
+        </div>
 
-<div class="p-3">
+        <ul class="list-group list-group-flush border-top">
+            <LOOP NAME="menu_toggle_rows">
+            <li class="list-group-item d-flex align-items-center gap-3 py-3">
+                <span class="kj-icon-tile is-sm<IF LOOP="shown"><ELSE> is-secondary</IF>"><i class="fa fa-fw fa-{{icon}}" aria-hidden="true"></i></span>
+                <div class="flex-grow-1" style="min-width: 0">
+                    <label class="form-check-label fw-semibold" for="menu_toggle_{{name}}">{{title}}</label>
+                    <IF LOOP="shown"><ELSE><span class="badge text-bg-secondary ms-1">{olang.MENU_TOGGLE_HIDDEN}</span></IF>
+                    <IF LOOP="audience"><div class="small text-body-secondary">{{audience}}</div></IF>
+                </div>
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="menu_toggle_{{name}}" name="shown[]" value="{{name}}"<IF LOOP="shown"> checked</IF>>
+                </div>
+            </li>
+            </LOOP>
+        </ul>
 
-<h4 class="mt-4">{olang.MENU_TOGGLE_TOP_MENU}</h4>
+        <div class="card-footer kj-form-actions">
+            <button type="submit" name="submit" value="1" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i><span>{olang.MENU_TOGGLE_SAVE}</span>
+            </button>
+        </div>
 
-<ul class="list-group">
-<LOOP NAME="top_menu_items">
-		<li class="list-group-item d-flex  justify-content-between">
-			<div class="col col-md-auto">
-				<h5>{{title}}</h5>
-			</div>
-			<div class="col col-md-auto">
-				<p class="field switch" id="top_menu_{{name}}">
-					<label onclick="toggleMenuItem('{{name}}', 'top', 0, {{hidden}})" class="cb-enable<IF LOOP="hidden == 0"> selected</IF>"><span>{olang.MENU_TOGGLE_SHOW}</span></label>
-					<label onclick="toggleMenuItem('{{name}}', 'top', 1, {{hidden}})" class="cb-disable<IF LOOP="hidden == 1"> selected</IF>"><span>{olang.MENU_TOGGLE_HIDE}</span></label>
-				</p>
-			</div>
-        </li>
-</LOOP>
-</ul>
-
-
-
-<h4 class="mt-5">{olang.MENU_TOGGLE_SIDE_MENU}</h4>
-
-<ul class="list-group">
-<LOOP NAME="side_menu_items">
-		<li class="list-group-item d-flex  justify-content-between">
-			<div class="col col-md-auto">
-				<h5>{{title}}</h5>
-			</div>
-			<div class="col col-md-auto">
-				<p class="field switch" id="top_menu_{{name}}">
-					<label onclick="toggleMenuItem('{{name}}', 'side', 0, {{hidden}})" class="cb-enable<IF LOOP="hidden == 0"> selected</IF>"><span>{olang.MENU_TOGGLE_SHOW}</span></label>
-					<label onclick="toggleMenuItem('{{name}}', 'side', 1, {{hidden}})" class="cb-disable<IF LOOP="hidden == 1"> selected</IF>"><span>{olang.MENU_TOGGLE_HIDE}</span></label>
-				</p>
-			</div>
-        </li>
-</LOOP>
-</ul>
-
-
-<h4 class="mt-5">{olang.MENU_TOGGLE_ADMIN_MENU}</h4>
-<UNLESS NAME="is_founder_admin">
-    <div class="alert alert-light">{olang.MENU_TOGGLE_ADMIN_MENU_EXP}</div>
-<ELSE>
-<ul class="list-group">
-<LOOP NAME="admin_menu_items">
-		<li class="list-group-item d-flex  justify-content-between">
-			<div class="col col-md-auto">
-				<h5>{{title}}</h5>
-			</div>
-			<div class="col col-md-auto">
-				<p class="field switch" id="top_menu_{{name}}">
-					<label onclick="toggleMenuItem('{{name}}', 'admin', 0, {{hidden}})" class="cb-enable<IF LOOP="hidden == 0"> selected</IF>"><span>{olang.MENU_TOGGLE_SHOW}</span></label>
-					<label onclick="toggleMenuItem('{{name}}', 'admin', 1, {{hidden}})" class="cb-disable<IF LOOP="hidden == 1"> selected</IF>"><span>{olang.MENU_TOGGLE_HIDE}</span></label>
-				</p>
-			</div>
-        </li>
-</LOOP>
-</ul>
-</UNLESS>
-</div>
+        {H_FORM_KEYS}
+    </form>
+    <ELSE>
+    <div class="card-body">
+        <p>{menu_toggle_exp}</p>
+        <div class="alert alert-warning d-flex align-items-start gap-2 mb-0" role="alert">
+            <i class="fa-solid fa-lock kj-alert-icon" aria-hidden="true"></i>
+            <div>{olang.MENU_TOGGLE_FOUNDERS_ONLY}</div>
+        </div>
+    </div>
+    </IF>
+</section>
